@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +11,42 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMainHandlerWhenOK(t *testing.T) {
+	req := httptest.NewRequest("GET", "/cafe?count=5&city=moscow", nil)
+
+	responseRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(mainHandle)
+	handler.ServeHTTP(responseRecorder, req)
+
+	statusOK := http.StatusOK
+	status := responseRecorder.Code
+
+	require.NotEmpty(t, responseRecorder.Body.String())
+	if !assert.Equal(t, status, statusOK) {
+		t.Errorf("expected status code: %d, got %d", statusOK, status)
+	}
+}
+
+func TestMainHandlerWhenWrongCity(t *testing.T) {
+	req := httptest.NewRequest("GET", "/cafe?count=5&city=moscow", nil)
+
+	responseRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(mainHandle)
+	handler.ServeHTTP(responseRecorder, req)
+
+	expectedAnswer := `wrong city value`
+	answer, err := io.ReadAll(responseRecorder.Body)
+	if err != nil {
+		t.Error(err)
+	}
+	status := http.StatusBadRequest
+	city := req.URL.Query().Get("city")
+	if !assert.Equal(t, city, "moscow") {
+		assert.Equal(t, status, responseRecorder.Code)
+		assert.Equal(t, expectedAnswer, string(answer))
+	}
+}
+
 func TestMainHandlerWhenCountMoreThanTotal(t *testing.T) {
 	totalCount := 4
 	req := httptest.NewRequest("GET", "/cafe?count=5&city=moscow", nil)
@@ -19,23 +55,11 @@ func TestMainHandlerWhenCountMoreThanTotal(t *testing.T) {
 	handler := http.HandlerFunc(mainHandle)
 	handler.ServeHTTP(responseRecorder, req)
 
-	// здесь нужно добавить необходимые проверки
-	statusOK := http.StatusOK
-	status := responseRecorder.Code
 	countStr := req.URL.Query().Get("count")
-	require.NotEmpty(t, responseRecorder.Body.String())
-	require.NotEqual(t, countStr, "")
-	assert.Equal(t, status, statusOK)
-
-	city := req.URL.Query().Get("city")
-	moscow := "moscow"
-	if !assert.Equal(t, city, moscow) {
-		fmt.Println("wrong city value")
-	}
 
 	body := responseRecorder.Body.String()
 	list := strings.Split(body, ",")
-	if assert.GreaterOrEqual(t, len(list), totalCount) {
-		fmt.Printf("В городе %s найдено %d заведения: %s", moscow, totalCount, list)
-	}
+	require.NotEqual(t, countStr, "")
+	assert.GreaterOrEqual(t, len(list), totalCount)
+
 }

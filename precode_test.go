@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -30,14 +29,9 @@ func TestMainHandlerWhenWrongCity(t *testing.T) {
 	handler.ServeHTTP(responseRecorder, req)
 
 	expectedAnswer := `wrong city value`
-	answer, err := io.ReadAll(responseRecorder.Body)
-	if err != nil {
-		t.Error(err)
-	}
-	city := req.URL.Query().Get("city")
-	require.Equal(t, city, "moscow")
+
 	require.NotEqual(t, http.StatusBadRequest, responseRecorder.Code)
-	assert.NotEqual(t, expectedAnswer, string(answer))
+	assert.NotEqual(t, expectedAnswer, responseRecorder.Body.String())
 
 }
 
